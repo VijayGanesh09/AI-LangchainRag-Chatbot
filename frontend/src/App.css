@@ -1,0 +1,274 @@
+
+/* =================================
+   GLOBAL APP LAYOUT
+================================= */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: #f8faf9;
+    font-family: Arial, sans-serif;
+    color: #222;
+}
+
+.app {
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 25px;
+}
+
+.app h1 {
+    text-align: center;
+    color: #0F3824;
+    margin-bottom: 35px;
+    font-size: 28px;
+}
+
+h2 {
+    color: #0F3824;
+    margin-bottom: 18px;
+    font-size: 20px;
+}
+
+
+/* =================================
+   PDF UPLOAD SECTION
+================================= */
+
+.file-upload {
+    background: #ffffff;
+    padding: 25px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.file-upload input[type="file"] {
+    display: block;
+    width: 100%;
+    margin-bottom: 18px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: #ffffff;
+    font-size: 14px;
+}
+
+.file-upload input[type="file"]:disabled {
+    cursor: not-allowed;
+    background: #f2f2f2;
+}
+
+.file-upload button {
+    background: #0F3824;
+    color: white;
+    padding: 11px 22px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s ease;
+}
+
+.file-upload button:hover:not(:disabled) {
+    background: #195538;
+}
+
+.file-upload button:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+}
+
+
+/* =================================
+   CIRCULAR PDF UPLOAD PROGRESS
+================================= */
+
+.circular-progress-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 25px;
+}
+
+.circular-progress {
+    width: 115px;
+    height: 115px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease;
+}
+
+.progress-inner {
+    width: 93px;
+    height: 93px;
+    background: #ffffff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.progress-inner span {
+    font-size: 23px;
+    font-weight: 600;
+    color: #0F3824;
+}
+
+.circular-progress-container p {
+    margin-top: 12px;
+    font-size: 14px;
+    color: #555;
+}
+
+
+/* =================================
+   UPLOAD STATUS MESSAGES
+================================= */
+
+.status-message {
+    margin-top: 15px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #555;
+}
+
+.status-message.ready {
+    color: #0F3824;
+    font-weight: 600;
+}
+
+.status-message.failed {
+    color: #dc2626;
+}
+
+
+/* =================================
+   CHAT WINDOW
+================================= */
+
+.chat-window {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.chat-waiting {
+    color: #777;
+    font-size: 14px;
+    margin-bottom: 15px;
+}
+
+
+/* =================================
+   CHAT MESSAGES
+================================= */
+
+.messages {
+    min-height: 200px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 15px;
+    margin-bottom: 20px;
+    background: #f9fafb;
+    border-radius: 8px;
+}
+
+.messages p {
+    line-height: 1.6;
+    word-wrap: break-word;
+}
+
+
+/* =================================
+   CHAT INPUT AREA
+================================= */
+
+.chat-input {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.chat-input input {
+    flex: 1;
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    outline: none;
+    font-size: 14px;
+    transition: border-color 0.2s ease;
+}
+
+.chat-input input:focus {
+    border-color: #0F3824;
+}
+
+.chat-input input:disabled {
+    cursor: not-allowed;
+    background: #f2f2f2;
+}
+
+.chat-input button {
+    padding: 12px 22px;
+    background: #0F3824;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s ease;
+}
+
+.chat-input button:hover:not(:disabled) {
+    background: #195538;
+}
+
+.chat-input button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+
+/* =================================
+   RESPONSIVE DESIGN
+================================= */
+
+@media (max-width: 600px) {
+    .app {
+        margin: 15px auto;
+        padding: 15px;
+    }
+
+    .app h1 {
+        font-size: 23px;
+        margin-bottom: 25px;
+    }
+
+    .file-upload,
+    .chat-window {
+        padding: 18px;
+    }
+
+    .chat-input {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .chat-input button {
+        width: 100%;
+    }
+
+    .messages {
+        min-height: 160px;
+    }
+}
