@@ -19,17 +19,39 @@ function App() {
 
     return (
         <div className="app">
-            <h1>AI RAG Chatbot</h1>
 
-            <FileUpload
-                onReady={handleReady}
-                onProcessing={handleProcessing}
-            />
+            <header className="app-header">
+                <div className="brand">
+                    <div className="brand-icon">AI</div>
+                    <div>
+                        <h1>AI Smart Assistant</h1>
+                        <p>Chat with your documents</p>
+                    </div>
+                </div>
 
-            <ChatWindow
-                isReady={isReady}
-                uploadStarted={uploadStarted}
-            />
+                <div className={`connection-status ${isReady ? "ready" : ""}`}>
+                    <span className="status-dot"></span>
+                    {isReady ? "Ready" : uploadStarted ? "Processing" : "Waiting"}
+                </div>
+            </header>
+
+            <div className="app-layout">
+
+                <aside className="sidebar">
+                    <FileUpload
+                        onReady={handleReady}
+                        onProcessing={handleProcessing}
+                    />
+                </aside>
+
+                <main className="chat-main">
+                    <ChatWindow
+                        isReady={isReady}
+                        uploadStarted={uploadStarted}
+                    />
+                </main>
+
+            </div>
         </div>
     );
 }

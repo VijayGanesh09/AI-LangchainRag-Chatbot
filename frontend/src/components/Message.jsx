@@ -1,12 +1,35 @@
 function Message({ message }) {
-  return (
-    <div className={`message ${message.role}`}>
-      <strong>
-        {message.role === "user" ? "You" : "AI Bot"}
-      </strong>
-      <p>{message.content}</p>
-    </div>
-  );
+    const isUser = message.role === "user";
+
+    return (
+        <div className={`message-row ${isUser ? "user-row" : "assistant-row"}`}>
+
+            {!isUser && (
+                <div className="message-avatar ai-avatar">
+                    ✦
+                </div>
+            )}
+
+            <div className={`message-content ${isUser ? "user-content" : "assistant-content"}`}>
+
+                <div className="message-sender">
+                    {isUser ? "You" : "AI Assistant"}
+                </div>
+
+                <div className="message-text">
+                    {message.content}
+                </div>
+
+            </div>
+
+            {isUser && (
+                <div className="message-avatar user-avatar">
+                    You
+                </div>
+            )}
+
+        </div>
+    );
 }
 
 export default Message;

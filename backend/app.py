@@ -8,7 +8,7 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
 from app.config import UPLOAD_FOLDER
-from app.ingestion import load_and_split_pdf
+from app.ingestion import load_and_split_pdf, SUPPORTED_EXTENSIONS
 from app.vectorstore import create_vector_store
 from app.rag_chain import generate_answer
 
@@ -22,17 +22,12 @@ CORS(app)
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-ALLOWED_EXTENSIONS = {"pdf"}
-
 processing_status = {}
 status_lock = threading.Lock()
 
 BATCH_SIZE = 32
 
-# Currently active document
-active_document_id = None
-
-# Prevent simultaneous uploads
+# Prevent simultaneous document processing
 upload_lock = threading.Lock()
 
 
@@ -56,10 +51,9 @@ WIDGET_FOLDER = os.path.abspath(
 
 def allowed_file(filename):
 
-    return (
-        "." in filename
-        and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
-    )
+    extension = os.path.splitext(filename)[1].lower()
+
+    return extension in SUPPORTED_EXTENSIONS
 
 
 def update_status(job_id, **updates):
@@ -71,25 +65,23 @@ def update_status(job_id, **updates):
 
 
 # ==========================================
-# BACKGROUND PDF PROCESSING
+# BACKGROUND DOCUMENT PROCESSING
 # ==========================================
 
-def process_pdf_in_background(
+def process_document_in_background(
     job_id,
     first_chunks,
     remaining_chunks
 ):
 
-    global active_document_id
-
     try:
 
         total_chunks = len(first_chunks)
 
-        # Insert first batch and clear previous vectors
+        # Add first chunks WITHOUT deleting existing embeddings
         create_vector_store(
             first_chunks,
-            reset=True
+            reset=False
         )
 
         batch = []
@@ -102,7 +94,6 @@ def process_pdf_in_background(
 
             if len(batch) >= BATCH_SIZE:
 
-                # Insert without clearing previous batches
                 create_vector_store(
                     batch,
                     reset=False
@@ -124,17 +115,14 @@ def process_pdf_in_background(
             )
 
         # Mark document as ready
-        with status_lock:
+        update_status(
+            job_id,
+            status="ready",
+            chunks_processed=total_chunks,
+            message="Document is ready to chat"
+        )
 
-            active_document_id = job_id
-
-            processing_status[job_id].update({
-                "status": "ready",
-                "chunks_processed": total_chunks,
-                "message": "Document is ready to chat"
-            })
-
-        print("PDF processing completed successfully.")
+        print("Document processing completed successfully.")
         print("Document ID:", job_id)
         print("Total chunks:", total_chunks)
 
@@ -155,13 +143,11 @@ def process_pdf_in_background(
 
 
 # ==========================================
-# PDF UPLOAD API
+# DOCUMENT UPLOAD API
 # ==========================================
 
 @app.route("/upload", methods=["POST"])
 def upload_file():
-
-    global active_document_id
 
     if "file" not in request.files:
 
@@ -180,10 +166,10 @@ def upload_file():
     if not allowed_file(file.filename):
 
         return jsonify({
-            "error": "Only PDF files are allowed"
+            "error": "Supported formats: PDF, DOCX, TXT and MD"
         }), 400
 
-    # Allow only one document to process at a time
+    # Allow one document to process at a time
     if not upload_lock.acquire(blocking=False):
 
         return jsonify({
@@ -215,7 +201,7 @@ def upload_file():
 
         file.save(file_path)
 
-        # Generate PDF chunks lazily
+        # Generate document chunks lazily
         chunk_iterator = iter(
             load_and_split_pdf(file_path, job_id)
         )
@@ -235,13 +221,13 @@ def upload_file():
 
                 break
 
-        # Validate PDF content
+        # Validate document content
         if not first_chunks:
 
             os.remove(file_path)
 
             return jsonify({
-                "error": "No readable text found in PDF"
+                "error": "No readable text found in the document"
             }), 400
 
         # Register processing job
@@ -250,15 +236,14 @@ def upload_file():
             processing_status[job_id] = {
                 "status": "processing",
                 "chunks_processed": 0,
-                "message": "Preparing your document"
+                "message": "Preparing your document",
+                "filename": filename,
+                "document_id": job_id
             }
-
-            # Prevent chat against an older document
-            active_document_id = None
 
         # Start background processing
         worker = threading.Thread(
-            target=process_pdf_in_background,
+            target=process_document_in_background,
             args=(
                 job_id,
                 first_chunks,
@@ -273,7 +258,7 @@ def upload_file():
 
         return jsonify({
 
-            "message": "PDF uploaded successfully",
+            "message": "Document uploaded successfully",
             "filename": filename,
             "job_id": job_id,
             "document_id": job_id,
@@ -295,7 +280,6 @@ def upload_file():
     finally:
 
         # Background worker releases the lock
-        # after processing finishes
         if not worker_started:
             upload_lock.release()
 
@@ -346,10 +330,8 @@ def chat():
             "error": "Please provide a valid question"
         }), 400
 
-    # Get active document
+    # Check whether any document is being processed
     with status_lock:
-
-        document_id = active_document_id
 
         active_jobs = [
             job
@@ -363,12 +345,6 @@ def chat():
             "error": "Please wait until document processing is complete"
         }), 409
 
-    if not document_id:
-
-        return jsonify({
-            "error": "Please upload and process a document first"
-        }), 400
-
     history = data.get("history", [])
 
     if not isinstance(history, list):
@@ -376,10 +352,10 @@ def chat():
 
     try:
 
-        # Generate answer using document-specific retrieval
+        # Search across all documents and allow general AI answers
         result = generate_answer(
             question.strip(),
-            document_id,
+            None,
             history
         )
 

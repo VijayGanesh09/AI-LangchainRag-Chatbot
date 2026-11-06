@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import Message from "./Message";
 
@@ -10,6 +9,15 @@ function ChatWindow({ isReady, uploadStarted }) {
     const [messages, setMessages] = useState([]);
     const [loading, setLoading] = useState(false);
 
+    const messagesEndRef = useRef(null);
+
+    // Automatically scroll to the latest message
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({
+            behavior: "smooth"
+        });
+    }, [messages, loading]);
+
     const sendMessage = async () => {
         if (!question.trim() || !isReady || loading) {
             return;
@@ -19,7 +27,10 @@ function ChatWindow({ isReady, uploadStarted }) {
 
         const updatedMessages = [
             ...messages,
-            { role: "user", content: userQuestion }
+            {
+                role: "user",
+                content: userQuestion
+            }
         ];
 
         setMessages(updatedMessages);
@@ -50,7 +61,7 @@ function ChatWindow({ isReady, uploadStarted }) {
                     role: "assistant",
                     content:
                         error.response?.data?.error ||
-                        "Something went wrong."
+                        "Something went wrong. Please try again."
                 }
             ]);
 
@@ -59,30 +70,94 @@ function ChatWindow({ isReady, uploadStarted }) {
         }
     };
 
+    const handleKeyDown = (event) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            sendMessage();
+        }
+    };
+
     return (
-        <div className="chat-window">
+        <main className="chat-window">
 
-            <h2>Chat with your PDF</h2>
+            {/* Chat Header */}
+            <header className="chat-header">
+                <div>
+                    <h2>AI Assistant</h2>
+                    <p>
+                        Ask questions and get intelligent answers
+                    </p>
+                </div>
 
-            {!uploadStarted && !isReady && (
-                <p className="chat-waiting">
-                    Upload a PDF to start chatting.
-                </p>
-            )}
+                <div className={`chat-status ${
+                    isReady ? "status-ready" : "status-waiting"
+                }`}>
+                    <span className="status-dot"></span>
+                    {isReady
+                        ? "Ready"
+                        : uploadStarted
+                        ? "Preparing"
+                        : "Waiting for document"}
+                </div>
+            </header>
 
-            {uploadStarted && !isReady && (
-                <p className="chat-waiting">
-                    Your document is being prepared. Chat will be available shortly.
-                </p>
-            )}
+            {/* Chat Messages */}
+            <section className="chat-body">
 
-            {isReady && messages.length === 0 && (
-                <p className="chat-waiting">
-                    Your document is ready! Ask your first question.
-                </p>
-            )}
+                {messages.length === 0 && (
+                    <div className="welcome-screen">
+                        <div className="welcome-icon">
+                            ✦
+                        </div>
 
-            <div className="messages">
+                        <h2>
+                            How can I help you today?
+                        </h2>
+
+                        <p>
+                            {isReady
+                                ? "Your document is ready. Ask me anything about its contents."
+                                : uploadStarted
+                                ? "Your document is being processed. The chat will be available shortly."
+                                : "Upload a document from the sidebar to get started."}
+                        </p>
+
+                        {isReady && (
+                            <div className="suggestion-list">
+                                <div
+                                    className="suggestion-card"
+                                    onClick={() => setQuestion(
+                                        "Give me a summary of this document."
+                                    )}
+                                >
+                                    <span>✦</span>
+                                    <p>Summarize this document</p>
+                                </div>
+
+                                <div
+                                    className="suggestion-card"
+                                    onClick={() => setQuestion(
+                                        "What are the main topics covered?"
+                                    )}
+                                >
+                                    <span>⌕</span>
+                                    <p>Find the main topics</p>
+                                </div>
+
+                                <div
+                                    className="suggestion-card"
+                                    onClick={() => setQuestion(
+                                        "Explain the important concepts."
+                                    )}
+                                >
+                                    <span>✧</span>
+                                    <p>Explain key concepts</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {messages.map((message, index) => (
                     <Message
                         key={index}
@@ -90,46 +165,61 @@ function ChatWindow({ isReady, uploadStarted }) {
                     />
                 ))}
 
-                {loading && <p>Thinking...</p>}
-            </div>
+                {loading && (
+                    <div className="thinking-indicator">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                        <p>Thinking...</p>
+                    </div>
+                )}
 
-            <div className="chat-input">
+                <div ref={messagesEndRef} />
 
-                <input
-                    type="text"
-                    value={question}
-                    onChange={(event) =>
-                        setQuestion(event.target.value)
-                    }
-                    onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                            sendMessage();
+            </section>
+
+            {/* Message Composer */}
+            <footer className="chat-footer">
+                <div className="chat-composer">
+
+                    <input
+                        type="text"
+                        value={question}
+                        onChange={(event) =>
+                            setQuestion(event.target.value)
                         }
-                    }}
-                    placeholder={
-                        isReady
-                            ? "Ask something about your PDF..."
-                            : uploadStarted
-                            ? "Preparing your document..."
-                            : "Select and upload a PDF first..."
-                    }
-                    disabled={!isReady || loading}
-                />
+                        onKeyDown={handleKeyDown}
+                        placeholder={
+                            isReady
+                                ? "Message AI Assistant..."
+                                : uploadStarted
+                                ? "Preparing your document..."
+                                : "Upload a document to start chatting..."
+                        }
+                        disabled={!isReady || loading}
+                    />
 
-                <button
-                    onClick={sendMessage}
-                    disabled={
-                        !isReady ||
-                        loading ||
-                        !question.trim()
-                    }
-                >
-                    {loading ? "Sending..." : "Send"}
-                </button>
+                    <button
+                        className="send-button"
+                        onClick={sendMessage}
+                        disabled={
+                            !isReady ||
+                            loading ||
+                            !question.trim()
+                        }
+                        aria-label="Send message"
+                    >
+                        ↑
+                    </button>
 
-            </div>
+                </div>
 
-        </div>
+                <p className="composer-note">
+                    AI can make mistakes. Verify important information.
+                </p>
+            </footer>
+
+        </main>
     );
 }
 

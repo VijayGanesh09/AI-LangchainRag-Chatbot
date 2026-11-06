@@ -4,6 +4,8 @@ import axios from "axios";
 
 const API_URL = "http://127.0.0.1:5000";
 
+const ALLOWED_EXTENSIONS = [".pdf", ".txt", ".docx", ".md"];
+
 function FileUpload({ onReady, onProcessing }) {
     const [file, setFile] = useState(null);
     const [message, setMessage] = useState("");
@@ -11,6 +13,7 @@ function FileUpload({ onReady, onProcessing }) {
     const [uploadProgress, setUploadProgress] = useState(0);
 
     const timerRef = useRef(null);
+    const inputRef = useRef(null);
 
     useEffect(() => {
         return () => {
@@ -23,7 +26,23 @@ function FileUpload({ onReady, onProcessing }) {
     const handleFileChange = (event) => {
         const selectedFile = event.target.files[0];
 
-        setFile(selectedFile || null);
+        if (!selectedFile) return;
+
+        const extension = selectedFile.name
+            .substring(selectedFile.name.lastIndexOf("."))
+            .toLowerCase();
+
+        if (!ALLOWED_EXTENSIONS.includes(extension)) {
+            setFile(null);
+            setMessage(
+                "Unsupported format. Select PDF, TXT, DOCX or MD."
+            );
+            setStatus("idle");
+            event.target.value = "";
+            return;
+        }
+
+        setFile(selectedFile);
         setMessage("");
         setStatus("idle");
         setUploadProgress(0);
@@ -39,7 +58,7 @@ function FileUpload({ onReady, onProcessing }) {
 
             if (data.status === "ready") {
                 setStatus("ready");
-                setMessage("Document is ready! You can start chatting.");
+                setMessage("Document is ready!");
                 onReady();
                 return;
             }
@@ -53,7 +72,7 @@ function FileUpload({ onReady, onProcessing }) {
             }
 
             setStatus("processing");
-            setMessage("PDF uploaded successfully!");
+            setMessage("Preparing your document...");
 
             timerRef.current = setTimeout(
                 () => checkStatus(jobId),
@@ -70,7 +89,7 @@ function FileUpload({ onReady, onProcessing }) {
 
     const handleUpload = async () => {
         if (!file) {
-            setMessage("Please select a PDF first.");
+            setMessage("Please select a document first.");
             return;
         }
 
@@ -109,63 +128,81 @@ function FileUpload({ onReady, onProcessing }) {
 
             setUploadProgress(100);
             setStatus("processing");
-            setMessage("PDF uploaded successfully!");
+            setMessage("Document uploaded successfully!");
 
             checkStatus(job_id);
 
         } catch (error) {
             setStatus("failed");
             setMessage(
-                error.response?.data?.error || "PDF upload failed."
+                error.response?.data?.error ||
+                "Document upload failed."
             );
         }
     };
 
+    const isBusy =
+        status === "uploading" || status === "processing";
+
     return (
         <div className="file-upload">
 
-            <h2>Upload your PDF</h2>
+            <div className="upload-heading">
+                <h2>Knowledge Base</h2>
+                <p>Add a document to start chatting with AI.</p>
+            </div>
 
-            <input
-                type="file"
-                accept=".pdf,application/pdf"
-                onChange={handleFileChange}
-                disabled={
-                    status === "uploading" ||
-                    status === "processing"
-                }
-            />
+            {/* File Selection Area */}
+            <div
+                className="upload-dropzone"
+                onClick={() => {
+                    if (!isBusy) inputRef.current?.click();
+                }}
+            >
+                <div className="upload-icon">↑</div>
 
+                <h3>
+                    {file ? "Document selected" : "Upload a document"}
+                </h3>
+
+                <p>
+                    {file
+                        ? file.name
+                        : "Click here to browse your files"}
+                </p>
+
+                <span>PDF · DOCX · TXT · MD</span>
+
+                <input
+                    ref={inputRef}
+                    type="file"
+                    accept=".pdf,.txt,.docx,.md"
+                    onChange={handleFileChange}
+                    disabled={isBusy}
+                    hidden
+                />
+            </div>
+
+            {/* Upload Button */}
             <button
+                className="upload-button"
                 onClick={handleUpload}
-                disabled={
-                    !file ||
-                    status === "uploading" ||
-                    status === "processing"
-                }
+                disabled={!file || isBusy || status === "ready"}
             >
                 {status === "uploading"
                     ? "Uploading..."
                     : status === "processing"
-                    ? "Uploaded"
-                    : "Upload PDF"}
+                    ? "Processing..."
+                    : status === "ready"
+                    ? "Document Ready"
+                    : "Upload Document"}
             </button>
 
-            {/* Initial message before uploading */}
-            {status === "idle" && (
-                <p className="status-message">
-                    {file
-                        ? `Selected: ${file.name}. Click Upload PDF to continue.`
-                        : "Select a PDF and upload it to start chatting."}
-                </p>
-            )}
-
-            {/* Actual PDF upload progress */}
+            {/* Upload Progress */}
             {status === "uploading" && (
                 <div className="progress-container">
-
                     <div className="progress-info">
-                        <span>Uploading PDF</span>
+                        <span>Uploading document</span>
                         <span>{uploadProgress}%</span>
                     </div>
 
@@ -177,30 +214,39 @@ function FileUpload({ onReady, onProcessing }) {
                             }}
                         />
                     </div>
-
                 </div>
             )}
 
-            {/* Upload completed, background processing continues */}
+            {/* Processing Status */}
             {status === "processing" && (
-                <p className="status-message">
-                    PDF uploaded successfully!
-                </p>
+                <div className="upload-status processing-status">
+                    <span className="status-dot"></span>
+                    Preparing document for AI...
+                </div>
             )}
 
-            {/* All document processing completed */}
             {status === "ready" && (
-                <p className="status-message ready">
-                    Document is ready! You can start chatting.
-                </p>
+                <div className="upload-status ready-status">
+                    <span>✓</span>
+                    Document is ready for chat.
+                </div>
             )}
 
-            {/* Error message */}
             {status === "failed" && (
-                <p className="status-message failed">
+                <div className="upload-status failed-status">
                     {message}
-                </p>
+                </div>
             )}
+
+            {status === "idle" && message && (
+                <div className="upload-status failed-status">
+                    {message}
+                </div>
+            )}
+
+            <div className="upload-info">
+                Your documents are processed locally by this application.
+            </div>
 
         </div>
     );
